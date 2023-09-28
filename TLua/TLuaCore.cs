@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace TLua
 {
-    [AttributeUsage(AttributeTargets.Method)]
+    [AttributeUsage(AttributeTargets.Method)]//特性类，标记的类方法会被注册为Lua函数
     public class LuaFunctionAttribute : Attribute
     {
         public string Func;
@@ -21,7 +21,7 @@ namespace TLua
         }
     }
 
-    [AttributeUsage(AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Class)]//特性类，标记的类会被注册为Lua类
     public class LuaClassAttribute : Attribute
     {
         public string ClassName;
@@ -39,6 +39,7 @@ namespace TLua
         public static int i = -1;
 
         private static ArrayList DoFileName;
+        private static ArrayList PluginImportName;
         private static string ExePath;//获得程序运行路径
         private static string[] directories;//Lua列表
         //方法
@@ -48,6 +49,7 @@ namespace TLua
 
             LuaManage = new ArrayList();//声明并实例化一个全局Lua栈变量用于控制交互
             DoFileName = new ArrayList();
+            PluginImportName = new ArrayList();
             ExePath = global::System.IO.Directory.GetCurrentDirectory();//获得程序运行路径
             if (!Directory.Exists(@ExePath + "\\BepInEx\\TLua"))
             {
@@ -55,13 +57,17 @@ namespace TLua
                 Directory.CreateDirectory(@ExePath + "\\BepInEx\\TLua");//如果不存在TLua文件夹就新建
             }
             directories = System.IO.Directory.GetDirectories(@ExePath + "\\BepInEx\\TLua");//获得Lua列表
-            foreach (string dir in directories)
-            {//第一步初始化，设置编码和构建TsumugiLuaManage数组
-                if (File.Exists(dir + "\\main.lua"))//判断是否存在main.lua文件，如果不存在则不需要lua栈管理
-                {//存在的情况下
-                    NLua.Lua temp = new NLua.Lua();
-                    temp.State.Encoding = System.Text.Encoding.UTF8;//设置编码防止乱码
-                    LuaManage.Add(new TsumugiLuaManage(temp, dir));
+            {
+                int index = 0;
+                foreach (string dir in directories)
+                {//第一步初始化，设置编码和构建TsumugiLuaManage数组
+                    if (File.Exists(dir + "\\main.lua"))//判断是否存在main.lua文件，如果不存在则不需要lua栈管理
+                    {//存在的情况下
+                        NLua.Lua temp = new NLua.Lua();
+                        temp.State.Encoding = System.Text.Encoding.UTF8;//设置编码防止乱码
+                        LuaManage.Add(new TsumugiLuaManage(temp, dir, index));
+                        index++;
+                    }
                 }
             }
             foreach (TsumugiLuaManage mainLua in LuaManage)
@@ -79,6 +85,7 @@ namespace TLua
             {//执行步奏
                 DoFileName.Clear();//清除dofile_once用于判断的缓存，因为已经到下一个lua了
                 TLuaCBFuncManage.UseEventName.Clear();//同上
+                PluginImportName.Clear();
                 i++;//因为已经判断过是否存在了，所以不需要再次判断
                 string LuaBuf = File.ReadAllText(mainLua.LuaPath + "\\main.lua");
                 mainLua.TsumugiLuaStack.DoString(LuaBuf);
@@ -93,13 +100,15 @@ namespace TLua
         }
         public class TsumugiLuaManage//管理Lua栈变量用的
         {
-            public TsumugiLuaManage(NLua.Lua LuaStack, string path)
+            public TsumugiLuaManage(NLua.Lua LuaStack, string path, int index)
             {
                 TsumugiLuaStack = LuaStack;
                 LuaPath = path;
+                this.index = index;
             }
             public NLua.Lua TsumugiLuaStack;
             public string LuaPath;
+            public int index;
         }
         private static class TLuaGlobalFunc //嵌套类，用于注册特定函数
         {
@@ -161,8 +170,16 @@ namespace TLua
                 string AssemblyPath = ExePath + "\\BepInEx\\plugins\\" + AssemblyName + ".dll";//获得路径
                 if (File.Exists(AssemblyPath))//判断程序集是否存在
                 {
+                    foreach (string str in PluginImportName)
+                    {//先判断是不是已有的
+                        if (str == AssemblyPath)
+                        {
+                            return;//如果是有的不加载
+                        }
+                    }
                     Debug.Log("加载Plugin，路径:" + AssemblyPath);
                     Type[] types = Assembly.LoadFrom(AssemblyPath).GetTypes();//获得所有类型
+                    PluginImportName.Add(AssemblyName);
                     TsumugiLuaManage temp = LuaManage[i] as TsumugiLuaManage;//类型转换
                     foreach (Type type in types)//遍历类型
                     {
