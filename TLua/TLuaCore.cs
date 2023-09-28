@@ -124,7 +124,7 @@ namespace TLua
             }
             public static void Lua_dofile(string FilePath)
             {
-                string LuaBuf = File.ReadAllText(ExePath + "\\TLua\\" + FilePath);
+                string LuaBuf = File.ReadAllText(ExePath + "\\BepInEx" + "\\TLua\\" + FilePath);
                 try
                 {
                     TsumugiLuaManage temp = LuaManage[i] as TsumugiLuaManage;//类型转换
@@ -137,7 +137,7 @@ namespace TLua
             }
             public static void Lua_dofile_once(string FilePath)
             {
-                string LuaBuf = File.ReadAllText(ExePath + "\\TLua\\" + FilePath);
+                string LuaBuf = File.ReadAllText(ExePath + "\\BepInEx" + "\\TLua\\" + FilePath);
                 foreach (string str in DoFileName)
                 {//先判断是不是已有的
                     if (str == FilePath)
