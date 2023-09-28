@@ -137,7 +137,7 @@ namespace TLua
             }
             public static void Lua_dofile_once(string FilePath)
             {
-                string LuaBuf = File.ReadAllText(ExePath + "\\mods\\" + FilePath);
+                string LuaBuf = File.ReadAllText(ExePath + "\\TLua\\" + FilePath);
                 foreach (string str in DoFileName)
                 {//先判断是不是已有的
                     if (str == FilePath)
